@@ -1,22 +1,22 @@
 import axios from "axios";
 import prisma from "../prisma/prisma.js";
-import {
-  generateJWT,
-  generateSessionToken,
-  hashToken,
-} from "../utils/authUtils.js";
+import { generateJWT } from "../utils/authUtils.js";
 
 export class GoogleController {
-  /**
-   * STEP 1: Redirect user to Google
-   * GET /api/auth/google/login
-   */
   static redirect(req, res) {
+    console.log("GoogleController.redirect called");
+
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) {
+      console.error("Missing Google OAuth environment variables");
       return res.status(500).json({
         error: "Google OAuth environment variables not configured",
       });
     }
+
+    console.log(
+      `GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? "Set" : "Not set"}`,
+    );
+    console.log(`GOOGLE_REDIRECT_URI: ${process.env.GOOGLE_REDIRECT_URI}`);
 
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -28,26 +28,33 @@ export class GoogleController {
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log(`Redirecting to Google OAuth: ${authUrl}`);
+
     return res.redirect(authUrl);
   }
 
-  /**
-   * STEP 2: Google callback
-   * GET /api/auth/google/callback
-   */
   static async callback(req, res) {
+    console.log("Google OAuth - Callback received");
+
     try {
-      const { code } = req.query;
+      const { code, error: googleError } = req.query;
+
+      if (googleError) {
+        console.error("Google OAuth - Error from Google:", googleError);
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/login?error=google_oauth_error&message=${encodeURIComponent(googleError)}`,
+        );
+      }
+
       if (!code) {
+        console.error("Google OAuth - No code received");
         return res.redirect(
           `${process.env.FRONTEND_URL}/login?error=google_no_code`,
         );
       }
 
-      /**
-       * STEP 2.1: Exchange code for access token
-       * IMPORTANT: must be x-www-form-urlencoded
-       */
+      console.log("Google OAuth - Received authorization code");
+
       const tokenParams = new URLSearchParams({
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
@@ -55,6 +62,8 @@ export class GoogleController {
         redirect_uri: process.env.GOOGLE_REDIRECT_URI,
         grant_type: "authorization_code",
       });
+
+      console.log("Google OAuth - Exchanging code for token...");
 
       const tokenRes = await axios.post(
         "https://oauth2.googleapis.com/token",
@@ -67,10 +76,9 @@ export class GoogleController {
       );
 
       const { access_token } = tokenRes.data;
+      console.log("Google OAuth - Access token received");
 
-      /**
-       * STEP 2.2: Fetch Google user profile
-       */
+      console.log("Google OAuth - Fetching user profile...");
       const userRes = await axios.get(
         "https://www.googleapis.com/oauth2/v3/userinfo",
         {
@@ -81,10 +89,9 @@ export class GoogleController {
       );
 
       const { sub: googleId, email, name, picture } = userRes.data;
+      console.log("Google OAuth - User profile received:", { email, name });
 
-      /**
-       * STEP 2.3: Upsert user
-       */
+      console.log("Google OAuth - Upserting user in database...");
       const user = await prisma.user.upsert({
         where: { googleId },
         update: {
@@ -102,48 +109,28 @@ export class GoogleController {
         },
       });
 
-      /**
-       * STEP 2.4: Create JWT + session
-       */
+      console.log("Google OAuth - User created/updated:", user.id);
+
       const jwtToken = generateJWT({ userId: user.id });
-      const sessionToken = generateSessionToken();
+      console.log("Google OAuth - JWT token generated");
 
-      await prisma.session.create({
-        data: {
-          userId: user.id,
-          token: hashToken(sessionToken),
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          userAgent: req.get("User-Agent"),
-          ipAddress: req.ip,
-        },
-      });
+      const redirectUrl = `${process.env.FRONTEND_URL}/login/google-success?token=${jwtToken}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || "")}`;
+      console.log("Google OAuth - Redirecting to:", redirectUrl);
 
-      /**
-       * STEP 2.5: Set cookies & redirect to frontend
-       */
-      res
-        .cookie("auth_token", jwtToken, {
-          httpOnly: true,
-          sameSite: "strict",
-          secure: process.env.NODE_ENV === "production",
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        })
-        .cookie("session_token", sessionToken, {
-          httpOnly: true,
-          sameSite: "strict",
-          secure: process.env.NODE_ENV === "production",
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        })
-        .redirect(process.env.FRONTEND_URL);
+      res.redirect(redirectUrl);
     } catch (error) {
       console.error(
         "Google OAuth callback error:",
         error.response?.data || error.message,
+        error.stack,
       );
 
-      res.redirect(
-        `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
-      );
+      let errorMessage = "google_auth_failed";
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=${errorMessage}`);
     }
   }
 }
