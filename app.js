@@ -7,13 +7,14 @@ dotenv.config();
 import authRoutes from "./src/auth/authRoutes.js";
 import emailRoutes from "./src/email/emailRoutes.js";
 import googleRoutes from "./src/auth/google.js";
+import adminAuthRoutes from "./src/admin/auth/AdminAuth.routes.js";
 
 const app = express();
 
 // Enable CORS for all routes with simple configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  optionsSuccessStatus: 200,
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    optionsSuccessStatus: 200,
 };
 
 // Apply CORS to all routes
@@ -21,8 +22,8 @@ app.use(cors(corsOptions));
 
 // Log all requests
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
 });
 
 app.use(express.json());
@@ -31,15 +32,16 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/email", emailRoutes);
 app.use("/api/auth/google", googleRoutes);
+app.use("/admin/auth", adminAuthRoutes);
 
 // Simple test route
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-  });
+    res.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+    });
 });
 
 export default app;

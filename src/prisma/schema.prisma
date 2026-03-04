@@ -26,6 +26,13 @@ model User {
   @@map("users")
 }
 
+model Admin {
+  email        String         @id @default(cuid())
+  password     String?
+  role         String?
+
+  @@map("admin")
+}
 
 model Session {
   id         String   @id @default(cuid())
