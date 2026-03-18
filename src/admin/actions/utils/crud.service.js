@@ -1,4 +1,4 @@
-import prisma from "../../prisma/prisma.js";
+import prisma from "../../../prisma/prisma.js";
 
 // Insert
 export const insertData = async (tableName, data) => {

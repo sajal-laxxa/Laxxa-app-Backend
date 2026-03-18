@@ -8,6 +8,7 @@ import authRoutes from "./src/auth/authRoutes.js";
 import emailRoutes from "./src/email/emailRoutes.js";
 import googleRoutes from "./src/auth/google.js";
 import adminAuthRoutes from "./src/admin/auth/AdminAuth.routes.js";
+import adminDeptRoutes from "./src/admin/actions/department/department.routes.js";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth/email", emailRoutes);
 app.use("/api/auth/google", googleRoutes);
 app.use("/admin/auth", adminAuthRoutes);
+app.use("/admin/department", adminDeptRoutes);
 
 // Simple test route
 
