@@ -10,9 +10,9 @@ echo "➡️ Creating department..."
 CREATE_RESPONSE=$(curl -s -X POST "$BASE_URL/create" \
 -H "Content-Type: application/json" \
 -d '{
-    "name": "Computer Science",
-    "code": "CSE123",
-    "description": "CS Dept",
+    "name": "Human Resource",
+    "code": "HR123",
+    "description": "HR Dept",
     "status": true
 }')
 
@@ -27,14 +27,14 @@ curl -s -X GET "$BASE_URL/getData?page=1" | jq
 
 # 3. Update
 echo "➡️ Updating department..."
-curl -s -X PUT "$BASE_URL/update/CSE123" \
+curl -s -X PUT "$BASE_URL/update/HR123" \
 -H "Content-Type: application/json" \
 -d '{
     "name": "Updated Department"
 }' | jq
 
 # 4. Delete
-echo "➡️ Deleting department..."
-curl -s -X DELETE "$BASE_URL/delete/CSE123" | jq
+#echo "➡️ Deleting department..."
+#curl -s -X DELETE "$BASE_URL/delete/CSE123" | jq
 
 echo "✅ Done"
