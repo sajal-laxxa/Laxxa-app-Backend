@@ -15,7 +15,19 @@ model Department {
   status      Boolean
   createdAt   DateTime @default(now())
 
+  role        Role?    @relation(fields: [id], references: [departmentId])
   @@map("department")
+}
+
+model Role {
+  id            String   @id @default(uuid())
+  name          String
+  code          String
+  departmentId  String   @unique
+  status        Boolean
+  createdAt     DateTime @default(now())
+
+  department    Department @relation(fields: [departmentId], references: [id])
 }
 
 model User {
